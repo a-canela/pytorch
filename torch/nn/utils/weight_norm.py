@@ -1,7 +1,12 @@
 r"""
 Weight Normalization from https://arxiv.org/abs/1602.07868
 """
+import math
+from types import MethodType
+
 from torch.nn.parameter import Parameter, UninitializedParameter
+from torch.nn.modules.linear import Linear
+from torch.nn import init
 from torch import _weight_norm, norm_except_dim
 from typing import Any, TypeVar
 from ..modules import Module
@@ -50,6 +55,17 @@ class WeightNorm(object):
 
         # recompute weight before every forward()
         module.register_forward_pre_hook(fn)
+
+        # override reset_parameters method so it uses the new parameters
+        if type(module) == Linear:
+            def reset_parameters(self) -> None:
+                init.kaiming_uniform_(self.weight_g, a=math.sqrt(5))
+                init.kaiming_uniform_(self.weight_v, a=math.sqrt(5))
+                if self.bias is not None:
+                    fan_in, _ = init._calculate_fan_in_and_fan_out(self.weight_g)
+                    bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+                    init.uniform_(self.bias, -bound, bound)
+            setattr(module, 'reset_parameters', MethodType(reset_parameters, module))
 
         return fn
 

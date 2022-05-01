@@ -2,6 +2,7 @@ r"""
 Weight Normalization from https://arxiv.org/abs/1602.07868
 """
 import math
+from types import MethodType
 
 from torch.nn.parameter import Parameter, UninitializedParameter
 from torch.nn.modules.linear import Linear
@@ -64,7 +65,7 @@ class WeightNorm(object):
                     fan_in, _ = init._calculate_fan_in_and_fan_out(self.weight_g)
                     bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
                     init.uniform_(self.bias, -bound, bound)
-            setattr(module, 'reset_parameters', reset_parameters)
+            setattr(module, 'reset_parameters', MethodType(reset_parameters, module))
 
         return fn
 
